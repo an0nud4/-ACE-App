@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#08080c" />
+<title>ACE — AI Coding Assistant</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+
+<style>
+/* ============================================================
+   TOKENS
+============================================================ */
+:root{
+  --bg:            #08080c;
+  --bg-soft:       #0c0c13;
+  --panel:         #0e0e16;
+  --panel-2:       #12121b;
+  --hover:         rgba(255,255,255,.045);
+  --border:        rgba(255,255,255,.07);
+  --border-strong: rgba(255,255,255,.13);
+
+  --text:          #e9e9f2;
+  --text-dim:      #a0a0b4;
+  --text-mute:     #6a6a80;
+
+  --accent:        #3b82f6; /* ACE Logo Blue */
+  --accent-2:      #2563eb;
+  --accent-soft:   rgba(59,130,246,.14);
+  --accent-glow:   rgba(59,130,246,.35);
+
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --sidebar-w: 268px;
+  --header-h:  62px;
+
+  --ease: cubic-bezier(.4,0,.2,1);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
+  --shadow-md: 0 8px 24px -6px rgba(0,0,0,.6);
+  --shadow-lg: 0 24px 60px -12px rgba(0,0,0,.75);
+}
+
+/* ============================================================
+   RESET & BASE
+============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+textarea{font:inherit;color:inherit;background:none;border:none;outline:none;resize:none}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+svg{display:block;width:100%;height:100%}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,.08);
+  border-radius:99px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18);background-clip:padding-box}
+::selection{background:rgba(59,130,246,.35);color:#fff}
+
+/* ============================================================
+   APP SHELL & LAYOUT
+============================================================ */
+.app{
+  display:flex;
+  height:100dvh;
+  width:100%;
+  overflow:hidden;
+  background: radial-gradient(1000px 600px at 70% -10%, rgba(59,130,246,.06), transparent 70%), var(--bg);
+}
+
+/* ============================================================
+   SIDEBAR
+============================================================ */
+.sidebar{
+  width:var(--sidebar-w);
+  flex:0 0 var(--sidebar-w);
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  transition:width .28s var(--ease), flex-basis .28s var(--ease), opacity .2s var(--ease);
+  overflow:hidden;
+  position:relative;
+  z-index:40;
+}
+
+.app.collapsed .sidebar{
+  width:0;
+  flex-basis:0;
+  opacity:0;
+  pointer-events:none;
+  border-right-color:transparent;
+}
+
+.sidebar-head{
+  height:var(--header-h);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 14px 0 16px;
+  flex-shrink:0;
+  min-width:var(--sidebar-w);
+}
+
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{
+  width:32px;height:32px;flex:0 0 32px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 0 12px rgba(59,130,246,.3);
+}
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.15); }
+.brand-name{ font-size:15px; font-weight:600; letter-spacing:-.01em; white-space:nowrap; }
+
+.sidebar-body{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:6px 10px 12px;
+  min-width:var(--sidebar-w);
+}
+
+.new-chat{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  margin-bottom:18px;
+  border-radius:var(--radius);
+  background:linear-gradient(135deg, rgba(59,130,246,.16), rgba(37,99,235,.10));
+  border:1px solid rgba(59,130,246,.28);
+  color:#dcdcff;
+  font-size:14px;
+  font-weight:500;
+  transition:all .18s var(--ease);
+}
+.new-chat svg{width:16px;height:16px;flex:0 0 16px}
+.new-chat span{flex:1;text-align:left}
+.new-chat kbd{
+  font-family:'Inter',sans-serif; font-size:11px; padding:2px 6px; border-radius:5px;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.09); color:var(--text-dim);
+}
+.new-chat:hover{
+  background:linear-gradient(135deg, rgba(59,130,246,.26), rgba(37,99,235,.18));
+  border-color:rgba(59,130,246,.5); transform:translateY(-1px);
+}
+
+.nav{display:flex;flex-direction:column;gap:2px;margin-bottom:22px}
+.nav-item{
+  display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:9px;
+  font-size:13.5px; font-weight:500; color:var(--text-dim); transition:all .15s var(--ease); cursor:pointer;
+}
+.nav-item svg{width:17px;height:17px;flex:0 0 17px;opacity:.85}
+.nav-item:hover{background:var(--hover);color:var(--text)}
+.nav-item.active{background:rgba(255,255,255,.06);color:var(--text)}
+.nav-item.active svg{opacity:1;color:#93c5fd}
+
+/* Sidebar Footer / Branding */
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-mute);
+  flex-shrink: 0;
+  min-width: var(--sidebar-w);
+}
+.sidebar-footer a {
+  color: var(--text-dim);
+  font-weight: 500;
+  transition: color .15s;
+}
+.sidebar-footer a:hover {
+  color: var(--accent);
+}
+
+/* ============================================================
+   MAIN COLUMN & HEADER
+============================================================ */
+.main{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  position:relative;
+}
+
+.header{
+  height:var(--header-h);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  border-bottom:1px solid var(--border);
+  background:rgba(8,8,12,.72);
+  backdrop-filter:blur(18px) saturate(160%);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  position:relative;
+  z-index:30;
+}
+.header-left,.header-right{display:flex;align-items:center;gap:8px}
+
+.icon-btn{
+  width:34px;height:34px; display:grid;place-items:center; border-radius:9px;
+  color:var(--text-dim); transition:all .15s var(--ease); cursor:pointer;
+}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
+.icon-btn:active{transform:scale(.94)}
+
+.menu-btn{display:none}
+
+/* Model selector */
+.model-selector{position:relative}
+.model-btn{
+  display:flex; align-items:center; gap:8px; padding:7px 10px 7px 11px; border-radius:10px;
+  font-size:13.5px; font-weight:500; color:var(--text); border:1px solid transparent; transition:all .15s var(--ease);
+}
+.model-btn:hover{background:var(--hover);border-color:var(--border)}
+.model-dot{
+  width:7px;height:7px;border-radius:50%; background:#34d399;
+  box-shadow:0 0 0 3px rgba(52,211,153,.14); flex-shrink:0;
+}
+.model-btn .chev{width:14px;height:14px;color:var(--text-mute);transition:transform .2s var(--ease)}
+.model-selector.open .chev{transform:rotate(180deg)}
+
+.model-dropdown{
+  position:absolute; top:calc(100% + 8px); left:0; width:290px; padding:6px; border-radius:var(--radius);
+  background:var(--panel-2); border:1px solid var(--border-strong); box-shadow:var(--shadow-lg);
+  opacity:0; transform:translateY(-6px) scale(.98); pointer-events:none; transition:all .18s var(--ease); z-index:100;
+}
+.model-selector.open .model-dropdown{opacity:1; transform:translateY(0) scale(1); pointer-events:auto;}
+.model-item{
+  display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:9px; cursor:pointer; transition:background .13s var(--ease);
+}
+.model-item:hover{background:var(--hover)}
+.model-item-icon{
+  width:28px;height:28px;flex:0 0 28px; display:grid;place-items:center; border-radius:8px;
+  background:rgba(59,130,246,.14); color:#93c5fd; font-size:13px;
+}
+.model-item-info{flex:1;min-width:0}
+.model-item-name{font-size:13px;font-weight:500;color:var(--text)}
+.model-item-desc{font-size:11.5px;color:var(--text-mute)}
+.model-item .check{width:15px;height:15px;color:var(--accent);opacity:0;flex:0 0 15px}
+.model-item.active .check{opacity:1}
+
+.user-btn{
+  width:32px;height:32px; border-radius:50%; padding:2px; background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  margin-left:4px; transition:transform .15s var(--ease); cursor:pointer;
+}
+.user-btn:hover{transform:scale(1.06)}
+.avatar{
+  width:100%;height:100%; display:grid;place-items:center; border-radius:50%;
+  background:var(--panel-2); font-size:11.5px; font-weight:600; color:#bfdbfe; letter-spacing:.02em;
+}
+
+/* ============================================================
+   VIEWS: CHAT, PROJECTS, TEMPLATES
+============================================================ */
+.view-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+.view-container > .welcome,
+.view-container > .msg,
+.view-container > .page-wrap {
+  width: 100%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.view-container.hidden { display: none; }
+
+/* ---------- WELCOME ---------- */
+.welcome{
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  padding:56px 20px 40px; position:relative; animation:fadeUp .6s var(--ease) both;
+}
+.welcome-glow{
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:min(720px,110%); height:340px;
+  background:radial-gradient(ellipse at center, rgba(59,130,246,.22), rgba(37,99,235,.09) 42%, transparent 68%);
+  filter:blur(50px); pointer-events:none; z-index:0;
+}
+.welcome > *:not(.welcome-glow){position:relative;z-index:1}
+
+.welcome-title{
+  font-size:clamp(30px,5vw,46px); font-weight:700; letter-spacing:-.035em; line-height:1.1; margin-bottom:14px;
+}
+.grad{
+  background:linear-gradient(100deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.welcome-sub{ font-size:15px; color:var(--text-dim); max-width:520px; line-height:1.65; margin-bottom:34px; }
+
+.suggestions{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.suggestion-card{
+  display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left;
+  padding:16px 16px 17px; border-radius:var(--radius-lg); background:rgba(255,255,255,.022);
+  border:1px solid var(--border); transition:all .2s var(--ease); position:relative; overflow:hidden; cursor:pointer;
+}
+.suggestion-card:hover{
+  border-color:rgba(59,130,246,.4); background:rgba(255,255,255,.04); transform:translateY(-2px); box-shadow:0 12px 28px -12px rgba(0,0,0,.8);
+}
+.suggestion-icon{
+  width:32px;height:32px; display:grid;place-items:center; border-radius:9px;
+  background:rgba(59,130,246,.13); color:#93c5fd; margin-bottom:9px; transition:all .2s var(--ease);
+}
+.suggestion-icon svg{width:16px;height:16px}
+.suggestion-title{font-size:13.5px;font-weight:600;color:var(--text)}
+.suggestion-desc{font-size:12.5px;line-height:1.5;color:var(--text-mute)}
+
+/* ---------- PAGE WRAPPER (Projects/Templates) ---------- */
+.page-wrap {
+  padding: 40px 20px;
+  animation: fadeUp .4s var(--ease) both;
+}
+.page-header { margin-bottom: 24px; }
+.page-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.page-desc { font-size: 14px; color: var(--text-dim); }
+
+/* ---------- PROJECTS ---------- */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.project-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: all .2s var(--ease);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.project-card:hover {
+  border-color: rgba(59,130,246,.4);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.project-icon {
+  width: 36px; height: 36px;
+  background: rgba(59,130,246,.13);
+  color: #93c5fd;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  margin-bottom: 12px;
+}
+.project-icon svg { width: 18px; height: 18px; }
+.project-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.project-date {
+  font-size: 12px; color: var(--text-mute);
+}
+.project-delete {
+  position: absolute; top: 12px; right: 12px;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: 6px; color: var(--text-mute);
+  opacity: 0; transition: all .15s var(--ease);
+}
+.project-card:hover .project-delete { opacity: 1; }
+.project-delete:hover { background: rgba(248,113,113,.15); color: #f87171; }
+
+/* ---------- TEMPLATES ---------- */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.template-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all .2s var(--ease);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.template-card:hover {
+  border-color: rgba(59,130,246,.4);
+  background: rgba(255,255,255,.03);
+  transform: translateY(-2px);
+}
+.template-header { display: flex; align-items: center; gap: 12px; }
+.template-icon {
+  width: 34px; height: 34px;
+  background: rgba(59,130,246,.13);
+  color: #93c5fd;
+  border-radius: 9px;
+  display: grid; place-items: center;
+}
+.template-icon svg { width: 17px; height: 17px; }
+.template-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.template-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+/* ---------- CHAT MESSAGES ---------- */
+.msg{ display:flex; gap:13px; padding:22px 20px; animation:fadeUp .35s var(--ease) both; }
+.msg + .msg{border-top:1px solid rgba(255,255,255,.04)}
+.msg-avatar{
+  width:30px;height:30px; flex:0 0 30px; border-radius:9px; display:grid; place-items:center; font-size:13px; margin-top:1px;
+}
+.msg-avatar.ai{ background:#fff; overflow:hidden; box-shadow:0 4px 12px -3px var(--accent-glow); }
+.msg-avatar.ai img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.15); }
+.msg-avatar.user{ background:var(--panel-2); border:1px solid var(--border-strong); color:#bfdbfe; font-weight:600; font-size:11.5px; }
+
+.msg-body{flex:1;min-width:0}
+.msg-name{ font-size:12.5px; font-weight:600; color:var(--text); margin-bottom:6px; display:flex; align-items:center; gap:7px; }
+.msg-user .msg-body{ background:rgba(255,255,255,.035); border:1px solid var(--border); border-radius:var(--radius); padding:11px 15px; }
+.msg-user .msg-name{display:none}
+.msg-user .md p:last-child{margin-bottom:0}
+
+/* ---------- MARKDOWN ---------- */
+.md{font-size:14.5px;line-height:1.72;color:#d6d6e4;word-wrap:break-word}
+.md > *:first-child{margin-top:0}
+.md > *:last-child{margin-bottom:0}
+.md p{margin:0 0 13px}
+.md h1,.md h2,.md h3,.md h4{ color:#f0f0f7; font-weight:600; letter-spacing:-.015em; line-height:1.3; margin:24px 0 10px; }
+.md h1{font-size:20px} .md h2{font-size:17px} .md h3{font-size:15.5px} .md h4{font-size:14.5px}
+.md strong{color:#f2f2f8;font-weight:600} .md em{color:#c8c8dc}
+.md a{color:#93c5fd;text-decoration:underline;text-underline-offset:2px} .md a:hover{color:#bfdbfe}
+.md ul,.md ol{margin:0 0 13px;padding-left:22px} .md li{margin:4px 0}
+.md ul li::marker{color:var(--text-mute)} .md ol li::marker{color:var(--text-mute)}
+.md blockquote{ border-left:2px solid rgba(59,130,246,.5); padding-left:14px; margin:0 0 13px; color:var(--text-dim); }
+.md hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+.md table{ width:100%;border-collapse:collapse;margin:0 0 14px; font-size:13.5px; }
+.md th,.md td{ padding:8px 12px; border:1px solid var(--border); text-align:left; }
+.md th{background:rgba(255,255,255,.035);font-weight:600;color:#ececf6}
+.md tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+.md :not(pre) > code{
+  font-family:'JetBrains Mono',monospace; font-size:.86em; padding:2px 6px; border-radius:5px;
+  background:rgba(59,130,246,.14); border:1px solid rgba(59,130,246,.18); color:#bfdbfe; white-space:nowrap;
+}
+
+/* ---------- CODE BLOCKS ---------- */
+.code-block{ margin:0 0 15px; border-radius:var(--radius); border:1px solid var(--border-strong); background:#0b0b12; overflow:hidden; box-shadow:var(--shadow-sm); }
+.code-head{ display:flex; align-items:center; justify-content:space-between; padding:7px 8px 7px 14px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--border); }
+.code-lang{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.05em; text-transform:uppercase; color:var(--text-mute); }
+.copy-btn{ display:flex; align-items:center; gap:6px; padding:5px 9px; border-radius:6px; font-size:11.5px; font-weight:500; color:var(--text-dim); transition:all .15s var(--ease); }
+.copy-btn svg{width:13px;height:13px}
+.copy-btn:hover{background:var(--hover);color:var(--text)}
+.copy-btn.copied{color:#34d399}
+.code-block pre{ margin:0; padding:14px 16px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:12.8px; line-height:1.65; background:transparent !important; }
+.code-block pre code{ font-family:inherit; background:none !important; padding:0 !important; font-size:inherit; }
+
+/* ---------- TYPING INDICATOR ---------- */
+.typing{ display:flex; align-items:center; gap:5px; padding:6px 0 2px; }
+.typing span{ width:6px;height:6px; border-radius:50%; background:var(--text-mute); animation:typingBounce 1.3s infinite var(--ease); }
+.typing span:nth-child(2){animation-delay:.16s} .typing span:nth-child(3){animation-delay:.32s}
+
+/* ============================================================
+   COMPOSER
+============================================================ */
+.composer-wrap{
+  flex-shrink:0; padding:10px 20px 16px; position:relative; z-index:20;
+  display: flex; flex-direction: column;
+}
+.composer-wrap::before{
+  content:''; position:absolute; left:0; right:0; top:-46px; height:46px;
+  background:linear-gradient(to top, var(--bg) 12%, transparent); pointer-events:none;
+}
+.composer{
+  max-width:800px; width:100%; margin:0 auto; border-radius:var(--radius-xl); background:var(--panel-2);
+  border:1px solid var(--border-strong); box-shadow:var(--shadow-md); transition:border-color .2s var(--ease), box-shadow .2s var(--ease); overflow:hidden;
+}
+.composer:focus-within{ border-color:rgba(59,130,246,.55); box-shadow:0 0 0 3px rgba(59,130,246,.13), var(--shadow-md); }
+
+.composer-files{ display:none; flex-wrap:wrap; gap:7px; padding:10px 12px 0; }
+.composer-files.has-files{display:flex}
+.file-chip{ display:flex; align-items:center; gap:7px; padding:5px 9px; border-radius:7px; font-size:12px; color:var(--text-dim); background:rgba(255,255,255,.05); border:1px solid var(--border); }
+.file-chip svg{width:12px;height:12px;flex:0 0 12px;color:#93c5fd}
+.file-chip button{ display:grid;place-items:center; width:15px;height:15px; border-radius:4px; color:var(--text-mute); transition:all .13s var(--ease); }
+.file-chip button:hover{background:rgba(255,255,255,.1);color:#fff}
+
+.composer-inner{ display:flex; align-items:flex-end; gap:6px; padding:9px 9px 9px 10px; }
+.composer-btn{ width:34px;height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:9px; color:var(--text-mute); transition:all .15s var(--ease); }
+.composer-btn svg{width:17px;height:17px}
+.composer-btn:hover{background:var(--hover);color:var(--text)}
+
+#input{ flex:1; min-height:24px; max-height:200px; padding:7px 4px; font-size:14.5px; line-height:1.55; color:var(--text); }
+#input::placeholder{color:var(--text-mute)}
+
+.send-btn{
+  width:34px;height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff;
+  box-shadow:0 4px 14px -4px var(--accent-glow); transition:all .18s var(--ease);
+}
+.send-btn svg{width:16px;height:16px}
+.send-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 7px 20px -5px var(--accent-glow)}
+.send-btn:active:not(:disabled){transform:scale(.94)}
+.send-btn:disabled{ background:rgba(255,255,255,.07); color:var(--text-mute); box-shadow:none; cursor:not-allowed; }
+
+.composer-hint{ max-width:800px; width:100%; margin:9px auto 0; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:11px; color:var(--text-mute); padding:0 4px; flex-wrap:wrap; }
+.hint-keys{display:flex;align-items:center;gap:4px}
+.composer-hint kbd{ font-family:'Inter',sans-serif; font-size:10px; padding:1.5px 5px; border-radius:4px; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text-dim); }
+
+/* ============================================================
+   SETTINGS MODAL
+============================================================ */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none;
+  transition:opacity .2s var(--ease); z-index:1000;
+}
+.modal-overlay.active { opacity:1; pointer-events:auto; }
+.modal {
+  width:100%; max-width:460px; background:var(--panel-2); border:1px solid var(--border-strong);
+  border-radius:var(--radius-lg); padding:24px; box-shadow:var(--shadow-lg); transform:translateY(10px) scale(.98);
+  transition:all .25s var(--ease);
+}
+.modal-overlay.active .modal { transform:translateY(0) scale(1); }
+.modal-title { font-size:18px; font-weight:600; margin-bottom:6px; }
+.modal-desc { font-size:13px; color:var(--text-dim); margin-bottom:20px; }
+
+.form-group { margin-bottom:16px; }
+.form-label { display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em; }
+.form-textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:13.5px; line-height:1.5; resize:vertical; min-height:80px; transition:border-color .2s; }
+.form-textarea:focus { outline:none; border-color:var(--accent); }
+.form-range-row { display:flex; align-items:center; gap:12px; }
+.form-range { flex:1; -webkit-appearance:none; height:6px; border-radius:3px; background:rgba(255,255,255,.1); outline:none; }
+.form-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 0 10px var(--accent-glow); }
+.range-value { font-family:'JetBrains Mono',monospace; font-size:13px; color:#93c5fd; min-width:28px; text-align:right; }
+
+.modal-actions { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+.btn-secondary { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; color:var(--text-dim); background:rgba(255,255,255,.05); transition:all .15s; }
+.btn-secondary:hover { background:rgba(255,255,255,.1); color:#fff; }
+.btn-primary { padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; color:#fff; background:var(--accent); transition:all .15s; }
+.btn-primary:hover { background:var(--accent-2); }
+.btn-danger { padding:8px 12px; border-radius:8px; font-size:12px; font-weight:500; color:#f87171; background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.2); transition:all .15s; }
+.btn-danger:hover { background:rgba(248,113,113,.2); }
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+@keyframes fadeUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes typingBounce{ 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+@media (max-width:1024px){
+  :root{--sidebar-w:248px}
+  .suggestions{grid-template-columns:1fr}
+  .welcome{padding:40px 20px 28px}
+}
+
+@media (max-width:900px){
+  .sidebar{
+    position:fixed; top:0; left:0; height:100dvh; width:280px; flex-basis:280px;
+    transform:translateX(-100%); transition:transform .3s var(--ease);
+    box-shadow:var(--shadow-lg); border-right:1px solid var(--border-strong);
+  }
+  .app.sidebar-open .sidebar{transform:translateX(0)}
+  .app.sidebar-open .overlay{opacity:1;pointer-events:auto}
+  .app.collapsed .sidebar{width:280px;flex-basis:280px;opacity:1;pointer-events:auto;border-right-color:var(--border-strong)}
+  .menu-btn{display:grid}
+  .collapse-btn{display:none}
+  .composer-wrap{padding:8px 14px 14px}
+  .composer-hint{font-size:10.5px}
+  .hint-keys{display:none}
+}
+
+@media (max-width:640px){
+  :root{--header-h:56px}
+  .header{padding:0 12px}
+  .model-btn{padding:6px 8px;font-size:13px}
+  .model-btn span:not(.model-dot){max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .model-dropdown{width:min(290px,calc(100vw - 32px))}
+  .welcome{padding:28px 20px 20px}
+  .welcome-title{margin-bottom:10px}
+  .welcome-sub{font-size:14px;margin-bottom:26px}
+  .suggestion-card{padding:14px}
+  .suggestion-desc{display:none}
+  .msg{gap:10px;padding:18px 20px}
+  .msg-avatar{width:26px;height:26px;flex-basis:26px}
+  .msg-user .msg-body{padding:10px 13px}
+  .md{font-size:14px}
+  .md h2{font-size:16px}
+  .composer{border-radius:18px}
+  .composer-hint{justify-content:center}
+  .header-right .icon-btn:not(.settings-btn){display:none}
+  .header-right .icon-btn.settings-btn{display:grid}
+  .page-wrap { padding: 24px 20px; }
+  .projects-grid, .templates-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <div class="overlay" id="overlay"></div>
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+    <div class="sidebar-head">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="logo.png" alt="ACE Logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\'><circle cx=\'12\' cy=\'12\' r=\'10\'/><text x=\'12\' y=\'16\' font-size=\'10\' text-anchor=\'middle\' fill=\'%233b82f6\' stroke=\'none\'>ACE</text></svg>'">
+        </div>
+        <span class="brand-name">ACE</span>
+      </div>
+      <button class="icon-btn collapse-btn" id="sidebarToggle" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-body">
+      <button class="new-chat" id="newChat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span>New chat</span>
+        <kbd>⌘K</kbd>
+      </button>
+
+      <nav class="nav" aria-label="Sections">
+        <a class="nav-item active" href="#" data-view="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Chats</span>
+        </a>
+        <a class="nav-item" href="#" data-view="projects">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.9 3.9A2 2 0 0 0 8.2 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          <span>Projects</span>
+        </a>
+        <a class="nav-item" href="#" data-view="templates">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+          </svg>
+          <span>Templates</span>
+        </a>
+        <a class="nav-item" href="#" id="sidebarSettingsBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Created by Footer -->
+    <div class="sidebar-footer">
+      Created by <a href="#" target="_blank" rel="noopener">Foodie Tech</a>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left">
+        <button class="icon-btn menu-btn" id="menuBtn" title="Open menu" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+
+        <div class="model-selector" id="modelSelector">
+          <button class="model-btn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false">
+            <span class="model-dot" aria-hidden="true"></span>
+            <span id="modelName">mimo-v2.6-flash</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <div class="model-dropdown" id="modelDropdown" role="listbox">
+            <div class="model-item active" data-name="mimo-v2.6-flash" data-model="mimo-v2.6-flash:free" role="option">
+              <span class="model-item-icon">✦</span>
+              <div class="model-item-info">
+                <div class="model-item-name">mimo-v2.6-flash</div>
+                <div class="model-item-desc">Fast & versatile</div>
+              </div>
+              <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+            <div class="model-item" data-name="deepseek-v4.1-flash" data-model="deepseek-v4.1-flash:free" role="option">
+              <span class="model-item-icon">◉</span>
+              <div class="model-item-info">
+                <div class="model-item-name">deepseek-v4.1-flash</div>
+                <div class="model-item-desc">Specialized for coding</div>
+              </div>
+              <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Save Chat Button -->
+        <button class="icon-btn" id="saveProjectBtn" title="Save Chat to Projects" aria-label="Save Chat" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+        <button class="icon-btn settings-btn" id="openSettings" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+        </button>
+        <button class="user-btn" id="userBtn" title="Account" aria-label="Account">
+          <span class="avatar">U</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CHAT VIEW -->
+    <main class="view-container" id="chatView">
+      <section class="welcome" id="welcome">
+        <div class="welcome-glow" aria-hidden="true"></div>
+        <h1 class="welcome-title">Build something <span class="grad">extraordinary</span></h1>
+        <p class="welcome-sub">
+          Your senior AI software engineer. Describe a feature, paste an error, or drop in code for review.
+        </p>
+
+        <div class="suggestions" id="suggestions">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </section>
+    </main>
+
+    <!-- PROJECTS VIEW -->
+    <section class="view-container hidden" id="projectsView">
+      <div class="page-wrap">
+        <div class="page-header">
+          <h1 class="page-title">Your Projects</h1>
+          <p class="page-desc">Load a previously saved chat session.</p>
+        </div>
+        <div class="projects-grid" id="projectsGrid">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TEMPLATES VIEW -->
+    <section class="view-container hidden" id="templatesView">
+      <div class="page-wrap">
+        <div class="page-header">
+          <h1 class="page-title">Code Templates</h1>
+          <p class="page-desc">Select a template to jumpstart your next prompt.</p>
+        </div>
+        <div class="templates-grid" id="templatesGrid">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPOSER -->
+    <div class="composer-wrap" id="composerWrap">
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="composer-files" id="composerFiles"></div>
+
+        <div class="composer-inner">
+          <button type="button" class="composer-btn attach-btn" id="attachBtn" title="Attach files" aria-label="Attach files">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <input type="file" id="fileInput" multiple hidden />
+
+          <textarea id="input" rows="1" placeholder="Ask ACE to build, debug, or explain code…" aria-label="Message"></textarea>
+
+          <button type="submit" class="send-btn" id="send" aria-label="Send message" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="composer-hint">
+        <span>ACE can make mistakes. Verify important code.</span>
+        <span class="hint-keys"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line</span>
+      </div>
+    </div>
+
+  </div><!-- /.main -->
+</div><!-- /.app -->
+
+<!-- ================= SETTINGS MODAL ================= -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2 class="modal-title">ACE Preferences</h2>
+    <p class="modal-desc">Customize how the AI behaves and writes code for you.</p>
+    
+    <div class="form-group">
+      <label class="form-label" for="systemPromptInput">System Prompt (Persona)</label>
+      <textarea id="systemPromptInput" class="form-textarea" placeholder="e.g., You are a Senior React Developer. Always use TypeScript."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="temperatureInput">Creativity (Temperature)</label>
+      <div class="form-range-row">
+        <input type="range" id="temperatureInput" class="form-range" min="0" max="1" step="0.1" value="0.7">
+        <span id="tempValue" class="range-value">0.7</span>
+      </div>
+      <p style="font-size:11.5px; color:var(--text-mute); margin-top:6px;">Lower is more strict and deterministic. Higher is more creative.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-danger" id="clearDataBtn">Reset App</button>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-secondary" id="cancelSettings">Cancel</button>
+        <button class="btn-primary" id="saveSettings">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+/* ============================================================
+   ACE — CORE APPLICATION LOGIC
+============================================================ */
+(function () {
+  'use strict';
+
+  /* ---------- DOM ELEMENTS ---------- */
+  const app         = document.getElementById('app');
+  const overlay     = document.getElementById('overlay');
+  const menuBtn     = document.getElementById('menuBtn');
+  const sidebarBtn  = document.getElementById('sidebarToggle');
+  const newChatBtn  = document.getElementById('newChat');
+  
+  // Views
+  const chatView       = document.getElementById('chatView');
+  const projectsView   = document.getElementById('projectsView');
+  const templatesView  = document.getElementById('templatesView');
+  const composerWrap   = document.getElementById('composerWrap');
+  const navItems       = document.querySelectorAll('.nav-item[data-view]');
+
+  // Sidebar Nav & Settings
+  const sidebarSettingsBtn = document.getElementById('sidebarSettingsBtn');
+  const openSettingsBtn    = document.getElementById('openSettings');
+  const settingsModal      = document.getElementById('settingsModal');
+  const cancelSettingsBtn  = document.getElementById('cancelSettings');
+  const saveSettingsBtn    = document.getElementById('saveSettings');
+  const clearDataBtn       = document.getElementById('clearDataBtn');
+  
+  // Settings Inputs
+  const systemPromptInput  = document.getElementById('systemPromptInput');
+  const temperatureInput   = document.getElementById('temperatureInput');
+  const tempValueDisplay   = document.getElementById('tempValue');
+
+  // Models
+  const modelSelector = document.getElementById('modelSelector');
+  const modelBtn      = document.getElementById('modelBtn');
+  const modelName     = document.getElementById('modelName');
+  const modelDropdown = document.getElementById('modelDropdown');
+  let currentModel    = 'mimo-v2.6-flash:free';
+
+  // Chat & Composer
+  const messagesEl   = document.getElementById('chatView');
+  const welcomeEl    = document.getElementById('welcome');
+  const composer     = document.getElementById('composer');
+  const input        = document.getElementById('input');
+  const sendBtn      = document.getElementById('send');
+  const attachBtn    = document.getElementById('attachBtn');
+  const fileInput    = document.getElementById('fileInput');
+  const filesWrap    = document.getElementById('composerFiles');
+  
+  // Projects & Templates Containers
+  const projectsGrid    = document.getElementById('projectsGrid');
+  const templatesGrid   = document.getElementById('templatesGrid');
+  const saveProjectBtn  = document.getElementById('saveProjectBtn');
+  const suggestionsGrid = document.getElementById('suggestions');
+
+  /* ---------- STATE & PREFERENCES ---------- */
+  let isStreaming = false;
+  let chatHistory = []; 
+  let attachedFiles = [];
+  
+  // Defaults
+  const DEFAULT_PROMPT = "You are ACE, a senior AI software engineer. Write clean, professional, and secure code. Explain your code step by step when necessary.";
+  const DEFAULT_TEMP = 0.7;
+
+  // Load preferences from local storage
+  let activeSystemPrompt = localStorage.getItem('ace_system_prompt') || DEFAULT_PROMPT;
+  let activeTemperature  = parseFloat(localStorage.getItem('ace_temperature')) || DEFAULT_TEMP;
+
+  // Initialize Settings UI
+  systemPromptInput.value = activeSystemPrompt;
+  temperatureInput.value = activeTemperature;
+  tempValueDisplay.textContent = activeTemperature;
+
+  /* ============================================================
+     VIEW SWITCHING (Chat, Projects, Templates)
+  ============================================================ */
+  function switchView(viewName) {
+    // Hide all views
+    chatView.classList.add('hidden');
+    projectsView.classList.add('hidden');
+    templatesView.classList.add('hidden');
+    composerWrap.style.display = 'none';
+    saveProjectBtn.style.display = 'none';
+
+    // Show target view
+    if (viewName === 'chat') {
+      chatView.classList.remove('hidden');
+      composerWrap.style.display = 'flex';
+      if (chatHistory.length > 0) saveProjectBtn.style.display = 'grid';
+    } else if (viewName === 'projects') {
+      projectsView.classList.remove('hidden');
+      renderProjects();
+    } else if (viewName === 'templates') {
+      templatesView.classList.remove('hidden');
+      renderTemplates();
+    }
+
+    // Update nav active state
+    navItems.forEach(item => {
+      item.classList.toggle('active', item.dataset.view === viewName);
+    });
+
+    // Mobile close
+    if (isMobile()) app.classList.remove('sidebar-open');
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView(item.dataset.view);
+    });
+  });
+
+  /* ============================================================
+     TEMPLATES DATA & RENDER
+  ============================================================ */
+  const TEMPLATES = [
+    { 
+      id: 'react', 
+      title: 'React Component', 
+      desc: 'Create a modern, responsive React component with Tailwind/CSS.', 
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+      prompt: 'Create a responsive React component for a modern dashboard card. It should have a clean design, a chart placeholder, and handle hover states. Include the CSS.'
+    },
+    { 
+      id: 'python', 
+      title: 'Python Script', 
+      desc: 'Write an automation script, scraper, or CLI tool in Python.', 
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+      prompt: 'Write a Python script that scrapes product data from a demo e-commerce site and saves it to a CSV file. Include error handling and rate limiting.'
+    },
+    { 
+      id: 'api', 
+      title: 'REST API Endpoints', 
+      desc: 'Design a secure API with JWT authentication and CRUD routes.', 
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>',
+      prompt: 'Design a secure Node.js/Express REST API for a blog. Include JWT authentication, user roles, CRUD endpoints for posts, and a PostgreSQL schema.'
+    },
+    { 
+      id: 'sql', 
+      title: 'Database Schema', 
+      desc: 'Generate a normalized SQL schema for complex relationships.', 
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+      prompt: 'Create a normalized PostgreSQL database schema for a multi-vendor e-commerce platform. Include tables for users, vendors, products, orders, and order_items. Add appropriate indexes and foreign key constraints.'
+    }
+  ];
+
+  function renderTemplates() {
+    templatesGrid.innerHTML = '';
+    TEMPLATES.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'template-card';
+      card.innerHTML = `
+        <div class="template-header">
+          <div class="template-icon">${t.icon}</div>
+          <div class="template-title">${t.title}</div>
+        </div>
+        <div class="template-desc">${t.desc}</div>
+      `;
+      card.addEventListener('click', () => {
+        input.value = t.prompt;
+        switchView('chat');
+        input.focus();
+        autoResize();
+      });
+      templatesGrid.appendChild(card);
+    });
+  }
+
+  /* ============================================================
+     PROJECTS DATA & RENDER
+  ============================================================ */
+  function getProjects() {
+    return JSON.parse(localStorage.getItem('ace_projects') || '[]');
+  }
+
+  function saveProject() {
+    if (chatHistory.length === 0) return;
+    
+    // Generate title from first user message
+    const firstMsg = chatHistory[0].content;
+    const title = firstMsg.length > 30 ? firstMsg.slice(0, 30) + '...' : firstMsg;
+    
+    const projects = getProjects();
+    const newProject = {
+      id: Date.now().toString(),
+      title: title,
+      date: new Date().toISOString(),
+      history: chatHistory
+    };
+    
+    projects.unshift(newProject);
+    localStorage.setItem('ace_projects', JSON.stringify(projects));
+    
+    // Visual feedback
+    saveProjectBtn.style.color = '#34d399';
+    setTimeout(() => saveProjectBtn.style.color = '', 1000);
+  }
+
+  function renderProjects() {
+    projectsGrid.innerHTML = '';
+    const projects = getProjects();
+    
+    if (projects.length === 0) {
+      projectsGrid.innerHTML = '<p style="color:var(--text-mute); font-size:14px; grid-column:1/-1;">No saved projects yet. Start a chat and click the save icon in the header.</p>';
+      return;
+    }
+
+    projects.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'project-card';
+      
+      const dateStr = new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      
+      card.innerHTML = `
+        <div class="project-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="project-title">${p.title}</div>
+        <div class="project-date">${dateStr}</div>
+        <button class="project-delete" title="Delete project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      `;
+
+      // Load project
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.project-delete')) return;
+        loadProject(p);
+      });
+
+      // Delete project
+      card.querySelector('.project-delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Delete this project?')) {
+          const updated = projects.filter(x => x.id !== p.id);
+          localStorage.setItem('ace_projects', JSON.stringify(updated));
+          renderProjects();
+        }
+      });
+
+      projectsGrid.appendChild(card);
+    });
+  }
+
+  function loadProject(p) {
+    chatHistory = p.history;
+    renderHistory();
+    switchView('chat');
+  }
+
+  saveProjectBtn.addEventListener('click', saveProject);
+
+  /* ============================================================
+     SETTINGS MODAL
+  ============================================================ */
+  function openModal() {
+    systemPromptInput.value = activeSystemPrompt;
+    temperatureInput.value = activeTemperature;
+    tempValueDisplay.textContent = activeTemperature;
+    settingsModal.classList.add('active');
+  }
+
+  function closeModal() {
+    settingsModal.classList.remove('active');
+  }
+
+  openSettingsBtn.addEventListener('click', openModal);
+  sidebarSettingsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal();
+  });
+  cancelSettingsBtn.addEventListener('click', closeModal);
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) closeModal();
+  });
+
+  temperatureInput.addEventListener('input', (e) => {
+    tempValueDisplay.textContent = e.target.value;
+  });
+
+  saveSettingsBtn.addEventListener('click', () => {
+    activeSystemPrompt = systemPromptInput.value.trim() || DEFAULT_PROMPT;
+    activeTemperature = parseFloat(temperatureInput.value);
+    localStorage.setItem('ace_system_prompt', activeSystemPrompt);
+    localStorage.setItem('ace_temperature', activeTemperature);
+    closeModal();
+  });
+
+  clearDataBtn.addEventListener('click', () => {
+    if (confirm("Clear all settings, projects, and current chat?")) {
+      localStorage.removeItem('ace_system_prompt');
+      localStorage.removeItem('ace_temperature');
+      localStorage.removeItem('ace_projects');
+      activeSystemPrompt = DEFAULT_PROMPT;
+      activeTemperature = DEFAULT_TEMP;
+      newChatBtn.click();
+      closeModal();
+    }
+  });
+
+  /* ============================================================
+     SIDEBAR TOGGLE & MODEL SELECTOR
+  ============================================================ */
+  const isMobile = () => window.matchMedia('(max-width: 900px)').matches;
+
+  menuBtn.addEventListener('click', () => {
+    app.classList.contains('sidebar-open') ? app.classList.remove('sidebar-open') : app.classList.add('sidebar-open');
+  });
+  overlay.addEventListener('click', () => app.classList.remove('sidebar-open'));
+  sidebarBtn.addEventListener('click', () => {
+    if (isMobile()) app.classList.remove('sidebar-open');
+    else app.classList.toggle('collapsed');
+  });
+
+  modelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = modelSelector.classList.toggle('open');
+    modelBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  modelDropdown.addEventListener('click', (e) => {
+    const item = e.target.closest('.model-item');
+    if (!item) return;
+    modelDropdown.querySelectorAll('.model-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    modelName.textContent = item.dataset.name;
+    currentModel = item.dataset.model;
+    modelSelector.classList.remove('open');
+    modelBtn.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!modelSelector.contains(e.target)) {
+      modelSelector.classList.remove('open');
+      modelBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  /* ============================================================
+     COMPOSER AUTO-RESIZE & FILES
+  ============================================================ */
+  function autoResize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    sendBtn.disabled = input.value.trim().length === 0 || isStreaming;
+  }
+
+  input.addEventListener('input', autoResize);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled) composer.requestSubmit();
+    }
+  });
+
+  attachBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    for (const f of fileInput.files) {
+      if (attachedFiles.some(x => x.name === f.name && x.size === f.size)) continue;
+      attachedFiles.push(f);
+    }
+    fileInput.value = '';
+    renderFiles();
+  });
+
+  function renderFiles() {
+    filesWrap.innerHTML = '';
+    filesWrap.classList.toggle('has-files', attachedFiles.length > 0);
+    attachedFiles.forEach((file, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+        </svg>
+        <span></span>
+        <button type="button" aria-label="Remove file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>`;
+      chip.querySelector('span').textContent = file.name.length > 24 ? file.name.slice(0, 21) + '…' : file.name;
+      chip.querySelector('button').addEventListener('click', () => {
+        attachedFiles.splice(idx, 1);
+        renderFiles();
+      });
+      filesWrap.appendChild(chip);
+    });
+  }
+
+  /* ============================================================
+     MARKDOWN & CODE BLOCKS
+  ============================================================ */
+  marked.setOptions({
+    breaks: true, gfm: true,
+    highlight: function (code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try { return hljs.highlight(code, { language: lang }).value; } catch (_) {}
+      }
+      try { return hljs.highlightAuto(code).value; } catch (_) {}
+      return code;
+    }
+  });
+
+  const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+
+  function enhanceCodeBlocks(root) {
+    root.querySelectorAll('pre > code').forEach((codeEl) => {
+      const pre = codeEl.parentElement;
+      if (pre.parentElement.classList.contains('code-block')) return;
+
+      const langClass = [...codeEl.classList].find(c => c.startsWith('language-'));
+      const lang = langClass ? langClass.replace('language-', '') : 'code';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'code-block';
+
+      const head = document.createElement('div');
+      head.className = 'code-head';
+
+      const label = document.createElement('span');
+      label.className = 'code-lang';
+      label.textContent = lang === 'plaintext' ? 'code' : lang;
+
+      const copy = document.createElement('button');
+      copy.className = 'copy-btn';
+      copy.type = 'button';
+      copy.innerHTML = COPY_ICON + '<span>Copy</span>';
+
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(codeEl.innerText);
+          copy.classList.add('copied');
+          copy.innerHTML = CHECK_ICON + '<span>Copied</span>';
+          setTimeout(() => {
+            copy.classList.remove('copied');
+            copy.innerHTML = COPY_ICON + '<span>Copy</span>';
+          }, 1800);
+        } catch (_) {}
+      });
+
+      head.append(label, copy);
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.append(head, pre);
+    });
+  }
+
+  /* ============================================================
+     MESSAGE RENDERING & CHAT LOGIC
+  ============================================================ */
+  const AI_LOGO = `<img src="logo.png" alt="ACE" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'%233b82f6\\' stroke-width=\\'2\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/><text x=\\'12\\' y=\\'16\\' font-size=\\'10\\' text-anchor=\\'middle\\' fill=\\'%233b82f6\\' stroke=\\'none\\'>ACE</text></svg>'">`;
+
+  function scrollToBottom(smooth = true) {
+    chatView.scrollTo({ top: chatView.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  function addUserMessage(text) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.innerHTML = `
+      <div class="msg-avatar user">U</div>
+      <div class="msg-body">
+        <div class="msg-name">You</div>
+        <div class="md"></div>
+      </div>`;
+    el.querySelector('.md').textContent = text;
+    chatView.appendChild(el);
+    scrollToBottom();
+  }
+
+  function createAssistantMessage() {
+    const el = document.createElement('div');
+    el.className = 'msg msg-ai';
+    el.innerHTML = `
+      <div class="msg-avatar ai">${AI_LOGO}</div>
+      <div class="msg-body">
+        <div class="msg-name">ACE</div>
+        <div class="md">
+          <div class="typing"><span></span><span></span><span></span></div>
+        </div>
+      </div>`;
+    chatView.appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+
+  function renderHistory() {
+    chatView.innerHTML = '';
+    if (chatHistory.length === 0) {
+      chatView.appendChild(welcomeEl);
+      saveProjectBtn.style.display = 'none';
+      return;
+    }
+
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') {
+        addUserMessage(msg.content);
+      } else if (msg.role === 'assistant') {
+        const el = document.createElement('div');
+        el.className = 'msg msg-ai';
+        el.innerHTML = `
+          <div class="msg-avatar ai">${AI_LOGO}</div>
+          <div class="msg-body">
+            <div class="msg-name">ACE</div>
+            <div class="md">${marked.parse(msg.content)}</div>
+          </div>`;
+        enhanceCodeBlocks(el.querySelector('.md'));
+        chatView.appendChild(el);
+      }
+    });
+    saveProjectBtn.style.display = 'grid';
+    scrollToBottom(false);
+  }
+
+  /* ============================================================
+     SECURE API CALL (VIA LOCAL PROXY)
+  ============================================================ */
+  async function fetchACE(messages, onChunk, onComplete, onError) {
+    try {
+      const response = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: currentModel,
+          messages: messages,
+          stream: true,
+          temperature: activeTemperature,
+          max_tokens: 4096
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || err.error || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); 
+
+        for (const line of lines) {
+          const cleanLine = line.trim();
+          if (!cleanLine || !cleanLine.startsWith('data: ')) continue;
+          const dataStr = cleanLine.slice(6);
+          if (dataStr === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+            const content = data.choices[0]?.delta?.content || '';
+            if (content) {
+              fullText += content;
+              onChunk(fullText);
+            }
+          } catch (e) {}
+        }
+      }
+      onComplete(fullText);
+    } catch (error) {
+      onError(error.message);
+    }
+  }
+
+  /* ============================================================
+     SEND FLOW
+  ============================================================ */
+  function sendMessage(text) {
+    const value = (text ?? input.value).trim();
+    if (!value || isStreaming) return;
+
+    if (welcomeEl.isConnected) welcomeEl.remove();
+
+    addUserMessage(value);
+    input.value = '';
+    attachedFiles.length = 0;
+    renderFiles();
+    autoResize();
+
+    isStreaming = true;
+    sendBtn.disabled = true;
+    const assistantEl = createAssistantMessage();
+    const mdContainer = assistantEl.querySelector('.md');
+    let currentMarkdown = '';
+
+    const apiMessages = [
+      { role: 'system', content: activeSystemPrompt },
+      ...chatHistory,
+      { role: 'user', content: value }
+    ];
+
+    fetchACE(
+      apiMessages,
+      (fullText) => {
+        if (currentMarkdown === '') mdContainer.innerHTML = '';
+        currentMarkdown = fullText;
+        const safeMarkdown = currentMarkdown.replace(/```[a-z]*\n?[^`]*$/g, '');
+        mdContainer.innerHTML = marked.parse(safeMarkdown);
+        mdContainer.querySelectorAll('pre code').forEach(hljs.highlightElement);
+        scrollToBottom();
+      },
+      (finalText) => {
+        mdContainer.innerHTML = marked.parse(finalText);
+        enhanceCodeBlocks(mdContainer);
+        scrollToBottom();
+        
+        chatHistory.push({ role: 'user', content: value });
+        chatHistory.push({ role: 'assistant', content: finalText });
+        
+        isStreaming = false;
+        sendBtn.disabled = input.value.trim().length === 0;
+        saveProjectBtn.style.display = 'grid';
+        input.focus();
+      },
+      (errorMsg) => {
+        mdContainer.innerHTML = `<div style="color:#f87171; padding:10px; background:rgba(248,113,113,.1); border-radius:8px; border:1px solid rgba(248,113,113,.2);">
+          <strong>Error:</strong> ${errorMsg}
+          <br><br><span style="font-size:12px; color:#a0a0b4;">Make sure you started the server by running <code>node server.js</code>.</span>
+        </div>`;
+        isStreaming = false;
+        sendBtn.disabled = input.value.trim().length === 0;
+      }
+    );
+  }
+
+  composer.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage();
+  });
+
+  /* ============================================================
+     WELCOME SUGGESTIONS
+  ============================================================ */
+  const SUGGESTIONS = [
+    { title: 'Debug an error', desc: 'Paste a stack trace or describe a bug.', prompt: 'My React component re-renders infinitely. Can you help me debug it and explain the fix?', icon: '🐛' },
+    { title: 'Build a component', desc: 'React, Vue, or vanilla UI with styling.', prompt: 'Build a responsive React component for a modern dashboard card with a chart placeholder and clean CSS.', icon: '🧩' },
+    { title: 'Design an API', desc: 'REST endpoints, auth, and schemas.', prompt: 'Design a secure JWT authentication flow with refresh tokens for a Node.js/Express API. Include the database schema.', icon: '🔌' },
+    { title: 'Write a script', desc: 'Automation, scrapers, and CLI tools.', prompt: 'Write a Python script to scrape product data from an e-commerce site and save it to a CSV.', icon: '📜' }
+  ];
+
+  function initSuggestions() {
+    suggestionsGrid.innerHTML = '';
+    SUGGESTIONS.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'suggestion-card';
+      btn.innerHTML = `
+        <span class="suggestion-icon">${s.icon}</span>
+        <span class="suggestion-title">${s.title}</span>
+        <span class="suggestion-desc">${s.desc}</span>
+      `;
+      btn.addEventListener('click', () => sendMessage(s.prompt));
+      suggestionsGrid.appendChild(btn);
+    });
+  }
+
+  newChatBtn.addEventListener('click', () => {
+    chatHistory = [];
+    initSuggestions();
+    renderHistory();
+    input.value = '';
+    attachedFiles.length = 0;
+    renderFiles();
+    autoResize();
+    switchView('chat');
+    input.focus();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      switchView('chat');
+      input.focus();
+    }
+    if (e.key === 'Escape') {
+      modelSelector.classList.remove('open');
+      closeModal();
+      if (isMobile()) app.classList.remove('sidebar-open');
+    }
+  });
+
+  // Initialize App
+  initSuggestions();
+  autoResize();
+  input.focus();
+})();
+</script>
+</body>
+</html>
